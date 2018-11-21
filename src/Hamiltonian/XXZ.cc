@@ -9,7 +9,7 @@ periodic_(periodic), sigma_z_mats_(sigma_z_mats)
   HamMat.resize(basis_size_ * basis_size_);
   if(sigma_z_mats_){
     SigmaZ.resize(l_);
-    for(int i = 0; i < l_; ++i)
+    for(MKL_INT i = 0; i < l_; ++i)
       SigmaZ[i].resize(basis_size_);
   }
 }
@@ -17,19 +17,19 @@ periodic_(periodic), sigma_z_mats_(sigma_z_mats)
 XXZ::~XXZ()
 {}
 
-void XXZ::construct_xxz(LLInt *int_basis,
+void XXZ::construct_xxz(MKL_INT *int_basis,
                         std::vector<double> &alpha,
                         std::vector<double> &delta,
                         std::vector<double> &h)
 {
-  for(LLInt state = 0; state < basis_size_; ++state){
+  for(MKL_INT state = 0; state < basis_size_; ++state){
 
-    LLInt bs = int_basis[state];
+    MKL_INT bs = int_basis[state];
     double vi = 0.0;
     double mag_term = 0.0;
 
-    for(int site = 0; site < l_; ++site){
-      LLInt bitset = bs;
+    for(MKL_INT site = 0; site < l_; ++site){
+      MKL_INT bitset = bs;
       if(bitset & (1 << site)){
         if(sigma_z_mats_)
           SigmaZ[site][state] = 1.0;
@@ -55,7 +55,7 @@ void XXZ::construct_xxz(LLInt *int_basis,
           vi -= delta[site];
           bitset ^= 1 << site;
           bitset ^= 1 << (site + 1) % l_;
-          LLInt match_ind1 = Utils::binsearch(int_basis, basis_size_, bitset);
+          MKL_INT match_ind1 = Utils::binsearch(int_basis, basis_size_, bitset);
           HamMat[ (state * basis_size_) + match_ind1 ] = 2.0 * alpha[site];
           continue;
         }     
@@ -65,7 +65,7 @@ void XXZ::construct_xxz(LLInt *int_basis,
           vi -= delta[site];
           bitset ^= 1 << site;
           bitset ^= 1 << (site + 1) % l_;
-          LLInt match_ind2 = Utils::binsearch(int_basis, basis_size_, bitset);
+          MKL_INT match_ind2 = Utils::binsearch(int_basis, basis_size_, bitset);
           HamMat[ (state * basis_size_) + match_ind2 ] = 2.0 * alpha[site];
           continue;
         }
@@ -81,8 +81,8 @@ void XXZ::construct_xxz(LLInt *int_basis,
 
 void XXZ::print_ham_mat()
 {
-  for(LLInt i = 0; i < basis_size_; ++i){
-    for(LLInt j = 0; j < basis_size_; ++j){
+  for(MKL_INT i = 0; i < basis_size_; ++i){
+    for(MKL_INT j = 0; j < basis_size_; ++j){
       std::cout << HamMat[(i * basis_size_) + j] << " ";
     }
     std::cout << std::endl; 

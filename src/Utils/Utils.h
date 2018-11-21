@@ -1,14 +1,13 @@
 #ifndef __UTILS_H
 #define __UTILS_H
 
+#include "mkl.h"
 #include <cmath>
-
-typedef long long int LLInt;
 
 namespace Utils
 {
-  LLInt binsearch(const LLInt *array, 
-                  LLInt len, 
-                  LLInt value);
+  MKL_INT binsearch(const MKL_INT *array, 
+                    MKL_INT len, 
+                    MKL_INT value);
 }
 #endif

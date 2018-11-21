@@ -18,8 +18,8 @@ double seconds()
 
 int main(int argc, char **argv)
 {
-  int l = 777;
-  int n = 777;
+  MKL_INT l = 777;
+  MKL_INT n = 777;
   double alpha_val = 0.777;
   double delta_val = 0.777;
   double h_val = 0.777;
@@ -56,7 +56,7 @@ int main(int argc, char **argv)
   std::vector<double> h(l, 0.0);
   // Impurity model
   h[l / 2] = h_val;
-
+#if 0
   std::cout << std::fixed;
   std::cout.precision(1);
   std::cout << "# Parameters:" << std::endl;
@@ -78,10 +78,10 @@ int main(int argc, char **argv)
     std::cout << h[i] << ", ";
   }
   std::cout << h[l - 1] << "]" << std::endl;
-
+#endif
   Basis *basis = new Basis(l, n);
 
-  LLInt basis_size = basis->basis_size;
+  MKL_INT basis_size = basis->basis_size;
 
   XXZ heisen( *basis, 
               periodic, 
@@ -93,7 +93,7 @@ int main(int argc, char **argv)
   //heisen.print_ham_mat();
 
   delete basis;
-
+  
   std::cout << std::fixed;
   std::cout.precision(8);
   // Diag
@@ -101,7 +101,7 @@ int main(int argc, char **argv)
   std::vector<double> eigvals(basis_size, 0.0);
   MKL_INT info;
 
-  std::cout << "# Calculating eigen..." << std::endl;
+  //std::cout << "# Calculating eigen..." << std::endl;
   double tic = seconds();
   info = LAPACKE_dsyevd( LAPACK_ROW_MAJOR,
                          'V', 
@@ -111,11 +111,11 @@ int main(int argc, char **argv)
                          basis_size, 
                          &eigvals[0] );
   if(info > 0){
-    std::cout << "Eigenproblem" << std::endl;
+    //std::cout << "Eigenproblem" << std::endl;
     exit(1);
   }
   double toc = seconds();
-  std::cout << "# Time eigen: " << (toc - tic) << std::endl;
+  //std::cout << "# Time eigen: " << (toc - tic) << std::endl;
 
   // Compute expectation value of SigmaZ[l / 2]
   // Transpose eigvectors
@@ -130,7 +130,7 @@ int main(int argc, char **argv)
 
   std::vector<double> tmp(basis_size, 0.0);
   std::vector<double> mags(basis_size, 0.0);
-  for(LLInt i = 0; i < basis_size; ++i){
+  for(MKL_INT i = 0; i < basis_size; ++i){
     vdMul(basis_size,
           &heisen.HamMat[(i * basis_size)],
           &heisen.SigmaZ[l / 2][0],
