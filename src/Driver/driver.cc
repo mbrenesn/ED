@@ -102,7 +102,7 @@ int main(int argc, char **argv)
   std::vector<double> eigvals(basis_size, 0.0);
   MKL_INT info;
 
-  //std::cout << "# Calculating eigen..." << std::endl;
+  std::cout << "# Calculating eigen..." << std::endl;
   double tic = seconds();
   info = LAPACKE_dsyevd( LAPACK_ROW_MAJOR,
                          'V', 
@@ -112,11 +112,11 @@ int main(int argc, char **argv)
                          basis_size, 
                          &eigvals[0] );
   if(info > 0){
-    //std::cout << "Eigenproblem" << std::endl;
+    std::cout << "Eigenproblem" << std::endl;
     exit(1);
   }
   double toc = seconds();
-  //std::cout << "# Time eigen: " << (toc - tic) << std::endl;
+  std::cout << "# Time eigen: " << (toc - tic) << std::endl;
 
   // Compute expectation value of SigmaZ[l / 2]
   // Transpose eigvectors
