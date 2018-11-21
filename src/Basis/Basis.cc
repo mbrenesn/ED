@@ -55,7 +55,7 @@ MKL_INT Basis::first_int_()
 {
   MKL_INT first = 0;
   for(MKL_INT i = 0; i < n; ++i){
-    first += 1 << i;
+    first += 1LL << i;
   }
 
   return first;

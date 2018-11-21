@@ -30,7 +30,7 @@ void XXZ::construct_xxz(MKL_INT *int_basis,
 
     for(MKL_INT site = 0; site < l_; ++site){
       MKL_INT bitset = bs;
-      if(bitset & (1 << site)){
+      if(bitset & (1LL << site)){
         if(sigma_z_mats_)
           SigmaZ[site][state] = 1.0;
         mag_term += h[site];
@@ -46,25 +46,25 @@ void XXZ::construct_xxz(MKL_INT *int_basis,
           continue;
       }
 
-      if(bitset & (1 << site)){
-        if(bitset & (1 << ( (site + 1) % l_ ) ) ){
+      if(bitset & (1LL << site)){
+        if(bitset & (1LL << ( (site + 1) % l_ ) ) ){
           vi += delta[site];
           continue;
         }
         else{
           vi -= delta[site];
-          bitset ^= 1 << site;
-          bitset ^= 1 << (site + 1) % l_;
+          bitset ^= 1LL << site;
+          bitset ^= 1LL << (site + 1) % l_;
           MKL_INT match_ind1 = Utils::binsearch(int_basis, basis_size_, bitset);
           HamMat[ (state * basis_size_) + match_ind1 ] = 2.0 * alpha[site];
           continue;
         }     
       } // End spin up case
       else{
-        if(bitset & (1 << ( (site + 1) % l_ ) ) ){
+        if(bitset & (1LL << ( (site + 1) % l_ ) ) ){
           vi -= delta[site];
-          bitset ^= 1 << site;
-          bitset ^= 1 << (site + 1) % l_;
+          bitset ^= 1LL << site;
+          bitset ^= 1LL << (site + 1) % l_;
           MKL_INT match_ind2 = Utils::binsearch(int_basis, basis_size_, bitset);
           HamMat[ (state * basis_size_) + match_ind2 ] = 2.0 * alpha[site];
           continue;

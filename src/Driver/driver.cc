@@ -56,6 +56,7 @@ int main(int argc, char **argv)
   std::vector<double> h(l, 0.0);
   // Impurity model
   h[l / 2] = h_val;
+
 #if 0
   std::cout << std::fixed;
   std::cout.precision(1);
@@ -79,7 +80,9 @@ int main(int argc, char **argv)
   }
   std::cout << h[l - 1] << "]" << std::endl;
 #endif
+
   Basis *basis = new Basis(l, n);
+  //basis->print_basis();
 
   MKL_INT basis_size = basis->basis_size;
 
@@ -93,7 +96,7 @@ int main(int argc, char **argv)
   //heisen.print_ham_mat();
 
   delete basis;
-  
+
   std::cout << std::fixed;
   std::cout.precision(8);
   // Diag
