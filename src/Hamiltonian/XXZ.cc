@@ -22,14 +22,14 @@ void XXZ::construct_xxz(LLInt *int_basis,
                         std::vector<double> &delta,
                         std::vector<double> &h)
 {
-  for(int state = 0; state < basis_size_; ++state){
+  for(LLInt state = 0; state < basis_size_; ++state){
 
     LLInt bs = int_basis[state];
     double vi = 0.0;
     double mag_term = 0.0;
 
     for(int site = 0; site < l_; ++site){
-      int bitset = bs;
+      LLInt bitset = bs;
       if(bitset & (1 << site)){
         if(sigma_z_mats_)
           SigmaZ[site][state] = 1.0;
