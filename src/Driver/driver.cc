@@ -57,7 +57,6 @@ int main(int argc, char **argv)
   // Impurity model
   h[l / 2] = h_val;
 
-#if 0
   std::cout << std::fixed;
   std::cout.precision(1);
   std::cout << "# Parameters:" << std::endl;
@@ -79,7 +78,6 @@ int main(int argc, char **argv)
     std::cout << h[i] << ", ";
   }
   std::cout << h[l - 1] << "]" << std::endl;
-#endif
 
   Basis *basis = new Basis(l, n);
   //basis->print_basis();
