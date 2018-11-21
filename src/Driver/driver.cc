@@ -81,7 +81,7 @@ int main(int argc, char **argv)
 
   Basis *basis = new Basis(l, n);
 
-  double basis_size = basis->basis_size;
+  LLInt basis_size = basis->basis_size;
 
   XXZ heisen( *basis, 
               periodic, 
@@ -94,6 +94,8 @@ int main(int argc, char **argv)
 
   delete basis;
 
+  std::cout << std::fixed;
+  std::cout.precision(8);
   // Diag
   // TODO Compare this against LAPACKE_dsyevr
   std::vector<double> eigvals(basis_size, 0.0);
@@ -128,9 +130,7 @@ int main(int argc, char **argv)
 
   std::vector<double> tmp(basis_size, 0.0);
   std::vector<double> mags(basis_size, 0.0);
-  std::cout << std::fixed;
-  std::cout.precision(8);
-  for(int i = 0; i < basis_size; ++i){
+  for(LLInt i = 0; i < basis_size; ++i){
     vdMul(basis_size,
           &heisen.HamMat[(i * basis_size)],
           &heisen.SigmaZ[l / 2][0],

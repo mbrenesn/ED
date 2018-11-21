@@ -17,14 +17,14 @@ periodic_(periodic), sigma_z_mats_(sigma_z_mats)
 XXZ::~XXZ()
 {}
 
-void XXZ::construct_xxz(int *int_basis,
+void XXZ::construct_xxz(LLInt *int_basis,
                         std::vector<double> &alpha,
                         std::vector<double> &delta,
                         std::vector<double> &h)
 {
   for(int state = 0; state < basis_size_; ++state){
 
-    int bs = int_basis[state];
+    LLInt bs = int_basis[state];
     double vi = 0.0;
     double mag_term = 0.0;
 
@@ -55,7 +55,7 @@ void XXZ::construct_xxz(int *int_basis,
           vi -= delta[site];
           bitset ^= 1 << site;
           bitset ^= 1 << (site + 1) % l_;
-          int match_ind1 = Utils::binsearch(int_basis, basis_size_, bitset);
+          LLInt match_ind1 = Utils::binsearch(int_basis, basis_size_, bitset);
           HamMat[ (state * basis_size_) + match_ind1 ] = 2.0 * alpha[site];
           continue;
         }     
@@ -65,7 +65,7 @@ void XXZ::construct_xxz(int *int_basis,
           vi -= delta[site];
           bitset ^= 1 << site;
           bitset ^= 1 << (site + 1) % l_;
-          int match_ind2 = Utils::binsearch(int_basis, basis_size_, bitset);
+          LLInt match_ind2 = Utils::binsearch(int_basis, basis_size_, bitset);
           HamMat[ (state * basis_size_) + match_ind2 ] = 2.0 * alpha[site];
           continue;
         }
@@ -81,8 +81,8 @@ void XXZ::construct_xxz(int *int_basis,
 
 void XXZ::print_ham_mat()
 {
-  for(int i = 0; i < basis_size_; ++i){
-    for(int j = 0; j < basis_size_; ++j){
+  for(LLInt i = 0; i < basis_size_; ++i){
+    for(LLInt j = 0; j < basis_size_; ++j){
       std::cout << HamMat[(i * basis_size_) + j] << " ";
     }
     std::cout << std::endl; 

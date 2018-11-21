@@ -3,10 +3,12 @@
 
 #include <cmath>
 
+typedef long long int LLInt;
+
 namespace Utils
 {
-  int binsearch(const int *array, 
-                int len, 
-                int value);
+  LLInt binsearch(const LLInt *array, 
+                  LLInt len, 
+                  LLInt value);
 }
 #endif

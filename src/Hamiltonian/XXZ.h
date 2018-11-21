@@ -12,7 +12,7 @@ class XXZ
       bool periodic = false,
       bool sigma_z_mats = false);
   ~XXZ();
-  void construct_xxz(int *int_basis,
+  void construct_xxz(LLInt *int_basis,
                      std::vector<double> &alpha,
                      std::vector<double> &delta,
                      std::vector<double> &h);
@@ -26,7 +26,7 @@ class XXZ
     int n_;
     bool periodic_;
     bool sigma_z_mats_;
-    int basis_size_;
+    LLInt basis_size_;
 };
 
 #endif

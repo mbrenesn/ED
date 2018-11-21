@@ -4,7 +4,7 @@ Basis::Basis(int sites, int nup)
 : l(sites), n(nup)
 {
   basis_size = basis_size_();
-  int_basis = new int[basis_size];
+  int_basis = new LLInt[basis_size];
   construct_int_basis_();
 }
 
@@ -15,8 +15,8 @@ Basis::Basis(const Basis &rhs)
   l = rhs.l;
   n = rhs.n;
   basis_size = rhs.basis_size;
-  int_basis = new int[basis_size];
-  for(int i = 0; i < basis_size; ++i)
+  int_basis = new LLInt[basis_size];
+  for(LLInt i = 0; i < basis_size; ++i)
     int_basis[i] = rhs.int_basis[i];
 }
 
@@ -28,8 +28,8 @@ Basis &Basis::operator=(const Basis &rhs)
     l = rhs.l;
     n = rhs.n;
     basis_size = rhs.basis_size;
-    int_basis = new int[basis_size];
-    for(int i = 0; i < basis_size; ++i)
+    int_basis = new LLInt[basis_size];
+    for(LLInt i = 0; i < basis_size; ++i)
       int_basis[i] = rhs.int_basis[i];
   }
   
@@ -41,7 +41,7 @@ Basis::~Basis()
   delete [] int_basis;
 }
 
-int Basis::basis_size_()
+LLInt Basis::basis_size_()
 {
   double size = 1.0;
   for(int i = 1; i <= (l - n); ++i){
@@ -51,9 +51,9 @@ int Basis::basis_size_()
   return floor(size + 0.5);
 }
 
-int Basis::first_int_()
+LLInt Basis::first_int_()
 {
-  int first = 0;
+  LLInt first = 0;
   for(int i = 0; i < n; ++i){
     first += 1 << i;
   }
@@ -63,13 +63,13 @@ int Basis::first_int_()
 
 void Basis::construct_int_basis_()
 {
-  int w;
-  int first = first_int_();
+  LLInt w;
+  LLInt first = first_int_();
 
   int_basis[0] = first;
 
-  for(int i = 1; i < basis_size; ++i){
-    int t = (first | (first - 1)) + 1;
+  for(LLInt i = 1; i < basis_size; ++i){
+    LLInt t = (first | (first - 1)) + 1;
     w = t | ((((t & -t) / (first & -first)) >> 1) - 1);
     
     int_basis[i] = w;
@@ -80,6 +80,6 @@ void Basis::construct_int_basis_()
 
 void Basis::print_basis()
 {
-  for(int i = 0; i <  basis_size; ++i)
+  for(LLInt i = 0; i <  basis_size; ++i)
     std::cout << int_basis[i] << std::endl;
 }

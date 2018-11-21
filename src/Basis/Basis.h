@@ -7,6 +7,8 @@
 #include <math.h>
 #include <sys/time.h>
 
+typedef long long int LLInt;
+
 class Basis
 {
   public:
@@ -18,12 +20,12 @@ class Basis
     void print_basis();
     // Members
     int l, n;
-    int basis_size;
-    int *int_basis;
+    LLInt basis_size;
+    LLInt *int_basis;
   
   private:
-    int first_int_();
-    int basis_size_();
+    LLInt first_int_();
+    LLInt basis_size_();
     void construct_int_basis_();
 };
 #endif
