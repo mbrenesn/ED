@@ -1,3 +1,9 @@
+/* 
+ * XXZ Hamiltonian
+ * Currently defined only for spin 1/2 systems, periodic or open boundaries
+ * SigmaZ mats implemented
+ */
+
 #ifndef __XXZ_H
 #define __XXZ_H
 
