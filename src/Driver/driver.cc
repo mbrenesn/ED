@@ -132,7 +132,8 @@ int main(int argc, char **argv)
                  basis_size);
 
   std::vector<double> tmp(basis_size, 0.0);
-  std::vector<double> mags(basis_size, 0.0);
+#if 0
+  // Diagonals
   tic = seconds(); 
   for(MKL_INT i = 0; i < basis_size; ++i){
     vdMul(basis_size,
@@ -149,7 +150,30 @@ int main(int argc, char **argv)
   }
   toc = seconds();
   std::cout << "# Time mult: " << (toc - tic) << std::endl;
+#endif
 
+  // Off diagonals
+  std::cout << std::scientific;
+  tic = seconds();
+  for(MKL_INT i = 0; i < basis_size; ++i){
+    for(MKL_INT j = 0; j < (i + 1); ++j){
+      if( i == j ) continue;
+      if( ( (std::abs(eigvals[i] + eigvals[j])) / l ) <= 0.1 ){
+        vdMul(basis_size,
+              &heisen.HamMat[(j * basis_size)],
+              &heisen.SigmaZ[l / 2][0],
+              &tmp[0]);
+        double val = cblas_ddot( basis_size,
+                                 &heisen.HamMat[(i * basis_size)],
+                                 1,
+                                 &tmp[0],
+                                 1);
+        std::cout << eigvals[i] - eigvals[j] << " " << std::abs(val) << std::endl;
+      }
+    }
+  }
+  toc = seconds();
+  std::cout << "# Time mult: " << (toc - tic) << std::endl;
 
   return 0;
 }
