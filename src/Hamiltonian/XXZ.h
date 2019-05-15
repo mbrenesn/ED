@@ -16,7 +16,8 @@ class XXZ
   // Methods
   XXZ(Basis &basis,
       bool periodic = false,
-      bool sigma_z_mats = false);
+      bool sigma_z_mats = false,
+      bool local_kinetic = false);
   ~XXZ();
   void construct_xxz(MKL_INT *int_basis,
                      std::vector<double> &alpha,
@@ -26,12 +27,14 @@ class XXZ
   // Members
   std::vector<double> HamMat;
   std::vector< std::vector<double> > SigmaZ;
+  std::vector<double> LocalK;
 
   private:
     MKL_INT l_; 
     MKL_INT n_;
     bool periodic_;
     bool sigma_z_mats_;
+    bool local_kinetic_;
     MKL_INT basis_size_;
 };
 
