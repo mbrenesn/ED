@@ -25,11 +25,13 @@ int main(int argc, char **argv)
   double alpha_val = 0.777;
   double delta_val = 0.777;
   double h_val = 0.777;
+  double eps = 0.777;
+  double stag = 0.777;
   bool periodic = true;
 
-  if(argc != 13){
+  if(argc != 17){
     std::cerr << "Usage: " << argv[0] << 
-      " --l [sites] --n [fill] --alpha [alpha] --delta [delta] --h [h] --periodic [bool]" 
+      " --l [sites] --n [fill] --alpha [alpha] --delta [delta] --h [h] --eps [eps] --stag [stag] --periodic [bool]" 
         << std::endl;
     exit(1);
   }
@@ -41,14 +43,16 @@ int main(int argc, char **argv)
     else if(str == "--alpha") alpha_val = atof(argv[i + 1]);
     else if(str == "--delta") delta_val = atof(argv[i + 1]);
     else if(str == "--h") h_val = atof(argv[i + 1]);
+    else if(str == "--eps") eps = atof(argv[i + 1]);
+    else if(str == "--stag") stag = atof(argv[i + 1]);
     else if(str == "--periodic") periodic = atoi(argv[i + 1]);
     else continue;
   }
 
-  if(l == 777 || n == 777 || alpha_val == 0.777 || delta_val == 0.777 || h_val == 0.777){
+  if(l == 777 || n == 777 || alpha_val == 0.777 || delta_val == 0.777 || h_val == 0.777 || eps == 0.777 || stag == 0.777){
     std::cerr << "Error setting parameters" << std::endl;
     std::cerr << "Usage: " << argv[0] << 
-      " --l [sites] --n [fill] --alpha [alpha] --delta [delta] --h [h] --periodic [bool]" 
+      " --l [sites] --n [fill] --alpha [alpha] --delta [delta] --h [h] --eps [eps] --stag [stag] --periodic [bool]" 
         << std::endl;
     exit(1);
   }
@@ -56,11 +60,15 @@ int main(int argc, char **argv)
   std::vector<double> alpha(l, alpha_val);
   std::vector<double> delta(l, delta_val);
   std::vector<double> h(l, 0.0);
+  // Small perturbation to rid ourselves of symmetries
+  h[0] += eps;
   // Impurity model
-  h[l / 2] = h_val;
+  h[(l / 2) - 1] += h_val;
+  // Staggered field
+  for(MKL_INT i = 1; i < l; i += 2) h[i] += -1.0 * stag;
 
   std::cout << std::fixed;
-  std::cout.precision(1);
+  std::cout.precision(2);
   std::cout << "# Parameters:" << std::endl;
   std::cout << "# L = " << l << std::endl;
   std::cout << "# N = " << n << std::endl;
@@ -88,6 +96,7 @@ int main(int argc, char **argv)
 
   XXZ heisen( *basis, 
               periodic, 
+              true,
               true );
   heisen.construct_xxz( basis->int_basis, 
                         alpha, 
@@ -120,7 +129,7 @@ int main(int argc, char **argv)
   double toc = seconds();
   std::cout << "# Time eigen: " << (toc - tic) << std::endl;
 
-  // Compute expectation value of SigmaZ[l / 2]
+  // Compute expectation values
   // Transpose eigvectors
   mkl_dimatcopy( 'R',
                  'T',
@@ -132,26 +141,71 @@ int main(int argc, char **argv)
                  basis_size);
 
   std::vector<double> tmp(basis_size, 0.0);
-#if 0
+  // Diagonal matrix for \sigma^z(N/2) * \sigma^z(N/2 - 1)
+  std::vector<double> Sn2Sn21(basis_size, 0.0);
+  vdMul(basis_size,
+        &heisen.SigmaZ[(l / 2) - 1][0],
+        &heisen.SigmaZ[(l / 2)][0],
+        &Sn2Sn21[0]);
+
   // Diagonals
   tic = seconds(); 
   for(MKL_INT i = 0; i < basis_size; ++i){
+    // Mig magnetisation
     vdMul(basis_size,
           &heisen.HamMat[(i * basis_size)],
-          &heisen.SigmaZ[l / 2][0],
+          &heisen.SigmaZ[(l / 2) - 1][0],
           &tmp[0]);
-    double val = cblas_ddot( basis_size,
-                             &heisen.HamMat[(i * basis_size)],
-                             1,
-                             &tmp[0],
-                             1);
+    double val1 = cblas_ddot( basis_size,
+                              &heisen.HamMat[(i * basis_size)],
+                              1,
+                              &tmp[0],
+                              1);
+    // Mig magnetisation -1
+    vdMul(basis_size,
+          &heisen.HamMat[(i * basis_size)],
+          &heisen.SigmaZ[(l / 2)][0],
+          &tmp[0]);
+    double val2 = cblas_ddot( basis_size,
+                              &heisen.HamMat[(i * basis_size)],
+                              1,
+                              &tmp[0],
+                              1);
+    // Sigma^z_(N/2 - 1) * Sigma^z_(N/2)
+    vdMul(basis_size,
+          &heisen.HamMat[(i * basis_size)],
+          &Sn2Sn21[0],
+          &tmp[0]);
+    double val3 = cblas_ddot( basis_size,
+                              &heisen.HamMat[(i * basis_size)],
+                              1,
+                              &tmp[0],
+                              1);
+    // Local kinetic
+    cblas_dgemv( CblasRowMajor,
+                 CblasNoTrans,
+                 basis_size,
+                 basis_size,
+                 1.0,
+                 &heisen.LocalK[0],
+                 basis_size,
+                 &heisen.HamMat[(i * basis_size)],
+                 1,
+                 0.0,
+                 &tmp[0],
+                 1);
+    double val4 = cblas_ddot( basis_size,
+                              &heisen.HamMat[(i * basis_size)],
+                              1,
+                              &tmp[0],
+                              1);
     std::cout << (eigvals[i] - eigvals[0]) / (eigvals[basis_size - 1] - eigvals[0]) 
-      << " " << val << std::endl;
+      << " " << val1 << " " << val2 << " " << val3 << " " << (val4 / 2.0) << std::endl;
   }
   toc = seconds();
   std::cout << "# Time mult: " << (toc - tic) << std::endl;
-#endif
 
+#if 0
   // Off diagonals
   std::cout << std::scientific;
   tic = seconds();
@@ -174,6 +228,6 @@ int main(int argc, char **argv)
   }
   toc = seconds();
   std::cout << "# Time mult: " << (toc - tic) << std::endl;
-
+#endif
   return 0;
 }
