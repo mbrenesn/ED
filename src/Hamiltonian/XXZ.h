@@ -27,7 +27,9 @@ class XXZ
   // Members
   std::vector<double> HamMat;
   std::vector< std::vector<double> > SigmaZ;
-  std::vector<double> LocalK;
+  std::vector<double> LocalK_vals;
+  std::vector<MKL_INT> LocalK_cols;
+  std::vector<MKL_INT> LocalK_rowptr;
 
   private:
     MKL_INT l_; 
