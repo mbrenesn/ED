@@ -5,6 +5,7 @@
 
 #include "mkl.h"
 #include "mkl_lapacke.h"
+#include "mkl_spblas.h"
 
 #include "../Basis/Basis.h"
 #include "../Hamiltonian/XXZ.h"
@@ -148,6 +149,20 @@ int main(int argc, char **argv)
         &heisen.SigmaZ[(l / 2)][0],
         &Sn2Sn21[0]);
 
+  // Matrix for local kinetic energy, in sparse format
+  struct matrix_descr descrK;
+  sparse_matrix_t LocK;
+  mkl_sparse_d_create_csr( &LocK,
+                           SPARSE_INDEX_BASE_ZERO,
+                           basis_size,
+                           basis_size,
+                           &heisen.LocalK_rowptr[0],
+                           &heisen.LocalK_rowptr[0] + 1,
+                           &heisen.LocalK_cols[0],
+                           &heisen.LocalK_vals[0] );
+  descrK.type = SPARSE_MATRIX_TYPE_GENERAL;
+  mkl_sparse_optimize( LocK );
+
   // Diagonals
   tic = seconds(); 
   for(MKL_INT i = 0; i < basis_size; ++i){
@@ -182,18 +197,13 @@ int main(int argc, char **argv)
                               &tmp[0],
                               1);
     // Local kinetic
-    cblas_dgemv( CblasRowMajor,
-                 CblasNoTrans,
-                 basis_size,
-                 basis_size,
-                 1.0,
-                 &heisen.LocalK[0],
-                 basis_size,
-                 &heisen.HamMat[(i * basis_size)],
-                 1,
-                 0.0,
-                 &tmp[0],
-                 1);
+    mkl_sparse_d_mv( SPARSE_OPERATION_NON_TRANSPOSE,
+                     1.0,
+                     LocK,
+                     descrK,
+                     &heisen.HamMat[(i * basis_size)],
+                     0.0,
+                     &tmp[0] );
     double val4 = cblas_ddot( basis_size,
                               &heisen.HamMat[(i * basis_size)],
                               1,
@@ -205,7 +215,6 @@ int main(int argc, char **argv)
   toc = seconds();
   std::cout << "# Time mult: " << (toc - tic) << std::endl;
 
-#if 0
   // Off diagonals
   std::cout << std::scientific;
   tic = seconds();
@@ -213,21 +222,57 @@ int main(int argc, char **argv)
     for(MKL_INT j = 0; j < (i + 1); ++j){
       if( i == j ) continue;
       if( ( (std::abs(eigvals[i] + eigvals[j])) / l ) <= 0.1 ){
+        // Mig magnetisation
         vdMul(basis_size,
               &heisen.HamMat[(j * basis_size)],
-              &heisen.SigmaZ[l / 2][0],
+              &heisen.SigmaZ[(l / 2) - 1][0],
               &tmp[0]);
-        double val = cblas_ddot( basis_size,
-                                 &heisen.HamMat[(i * basis_size)],
-                                 1,
-                                 &tmp[0],
-                                 1);
-        std::cout << eigvals[i] - eigvals[j] << " " << std::abs(val) << std::endl;
+        double val1 = cblas_ddot( basis_size,
+                                  &heisen.HamMat[(i * basis_size)],
+                                  1,
+                                  &tmp[0],
+                                  1);
+        // Mig magnetisation -1
+        vdMul(basis_size,
+              &heisen.HamMat[(j * basis_size)],
+              &heisen.SigmaZ[(l / 2)][0],
+              &tmp[0]);
+        double val2 = cblas_ddot( basis_size,
+                                  &heisen.HamMat[(i * basis_size)],
+                                  1,
+                                  &tmp[0],
+                                  1);
+        // Sigma^z_(N/2 - 1) * Sigma^z_(N/2)
+        vdMul(basis_size,
+              &heisen.HamMat[(j * basis_size)],
+              &Sn2Sn21[0],
+              &tmp[0]);
+        double val3 = cblas_ddot( basis_size,
+                                  &heisen.HamMat[(i * basis_size)],
+                                  1,
+                                  &tmp[0],
+                                  1);
+        // Local kinetic
+        mkl_sparse_d_mv( SPARSE_OPERATION_NON_TRANSPOSE,
+                         1.0,
+                         LocK,
+                         descrK,
+                         &heisen.HamMat[(j * basis_size)],
+                         0.0,
+                         &tmp[0] );
+        double val4 = cblas_ddot( basis_size,
+                                  &heisen.HamMat[(i * basis_size)],
+                                  1,
+                                  &tmp[0],
+                                  1);
+        std::cout << i + 1 << " " << j + 1 << " " << eigvals[i] - eigvals[j]
+          << " " << std::abs(val1) << " " << std::abs(val2) << " " << std::abs(val3) << " " <<
+            std::abs(val4 / 2.0) << std::endl;
       }
     }
   }
   toc = seconds();
   std::cout << "# Time mult: " << (toc - tic) << std::endl;
-#endif
+
   return 0;
 }
