@@ -162,40 +162,28 @@ int main(int argc, char **argv)
                            &heisen.LocalK_vals[0] );
   descrK.type = SPARSE_MATRIX_TYPE_GENERAL;
   mkl_sparse_optimize( LocK );
-
+#if 0
   // Diagonals
   tic = seconds(); 
   for(MKL_INT i = 0; i < basis_size; ++i){
     // Mig magnetisation
-    vdMul(basis_size,
-          &heisen.HamMat[(i * basis_size)],
-          &heisen.SigmaZ[(l / 2) - 1][0],
-          &tmp[0]);
-    double val1 = cblas_ddot( basis_size,
-                              &heisen.HamMat[(i * basis_size)],
-                              1,
-                              &tmp[0],
-                              1);
-    // Mig magnetisation -1
-    vdMul(basis_size,
-          &heisen.HamMat[(i * basis_size)],
-          &heisen.SigmaZ[(l / 2)][0],
-          &tmp[0]);
-    double val2 = cblas_ddot( basis_size,
-                              &heisen.HamMat[(i * basis_size)],
-                              1,
-                              &tmp[0],
-                              1);
+    double val1 = Utils::expectation_value_dense_diag( &heisen.HamMat[(i * basis_size)],
+                                                       &heisen.HamMat[(i * basis_size)],
+                                                       &heisen.SigmaZ[(l / 2) - 1][0],
+                                                       &tmp[0],
+                                                       basis_size);
+    // Mig magnetisation + 1
+    double val2 = Utils::expectation_value_dense_diag( &heisen.HamMat[(i * basis_size)],
+                                                       &heisen.HamMat[(i * basis_size)],
+                                                       &heisen.SigmaZ[(l / 2)][0],
+                                                       &tmp[0],
+                                                       basis_size);
     // Sigma^z_(N/2 - 1) * Sigma^z_(N/2)
-    vdMul(basis_size,
-          &heisen.HamMat[(i * basis_size)],
-          &Sn2Sn21[0],
-          &tmp[0]);
-    double val3 = cblas_ddot( basis_size,
-                              &heisen.HamMat[(i * basis_size)],
-                              1,
-                              &tmp[0],
-                              1);
+    double val3 = Utils::expectation_value_dense_diag( &heisen.HamMat[(i * basis_size)],
+                                                       &heisen.HamMat[(i * basis_size)],
+                                                       &Sn2Sn21[0],
+                                                       &tmp[0],
+                                                       basis_size);
     // Local kinetic
     mkl_sparse_d_mv( SPARSE_OPERATION_NON_TRANSPOSE,
                      1.0,
@@ -214,6 +202,7 @@ int main(int argc, char **argv)
   }
   toc = seconds();
   std::cout << "# Time mult: " << (toc - tic) << std::endl;
+#endif
 
   // Off diagonals
   std::cout << std::scientific;
@@ -223,35 +212,23 @@ int main(int argc, char **argv)
       if( i == j ) continue;
       if( ( (std::abs(eigvals[i] + eigvals[j])) / l ) <= 0.1 ){
         // Mig magnetisation
-        vdMul(basis_size,
-              &heisen.HamMat[(j * basis_size)],
-              &heisen.SigmaZ[(l / 2) - 1][0],
-              &tmp[0]);
-        double val1 = cblas_ddot( basis_size,
-                                  &heisen.HamMat[(i * basis_size)],
-                                  1,
-                                  &tmp[0],
-                                  1);
+        double val1 = Utils::expectation_value_dense_diag( &heisen.HamMat[(i * basis_size)],
+                                                           &heisen.HamMat[(j * basis_size)],
+                                                           &heisen.SigmaZ[(l / 2) - 1][0],
+                                                           &tmp[0],
+                                                           basis_size);
         // Mig magnetisation -1
-        vdMul(basis_size,
-              &heisen.HamMat[(j * basis_size)],
-              &heisen.SigmaZ[(l / 2)][0],
-              &tmp[0]);
-        double val2 = cblas_ddot( basis_size,
-                                  &heisen.HamMat[(i * basis_size)],
-                                  1,
-                                  &tmp[0],
-                                  1);
+        double val2 = Utils::expectation_value_dense_diag( &heisen.HamMat[(i * basis_size)],
+                                                           &heisen.HamMat[(j * basis_size)],
+                                                           &heisen.SigmaZ[(l / 2)][0],
+                                                           &tmp[0],
+                                                           basis_size);
         // Sigma^z_(N/2 - 1) * Sigma^z_(N/2)
-        vdMul(basis_size,
-              &heisen.HamMat[(j * basis_size)],
-              &Sn2Sn21[0],
-              &tmp[0]);
-        double val3 = cblas_ddot( basis_size,
-                                  &heisen.HamMat[(i * basis_size)],
-                                  1,
-                                  &tmp[0],
-                                  1);
+        double val3 = Utils::expectation_value_dense_diag( &heisen.HamMat[(i * basis_size)],
+                                                           &heisen.HamMat[(j * basis_size)],
+                                                           &Sn2Sn21[0],
+                                                           &tmp[0],
+                                                           basis_size);
         // Local kinetic
         mkl_sparse_d_mv( SPARSE_OPERATION_NON_TRANSPOSE,
                          1.0,

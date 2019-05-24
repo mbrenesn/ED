@@ -24,4 +24,22 @@ namespace Utils
     else
       return binsearch(array, mid, value);
   }
+
+  double expectation_value_dense_diag(double *bra, 
+                                      double *ket, 
+                                      double *op, 
+                                      double *tmp, 
+                                      MKL_INT &basis_size)
+  {
+    vdMul( basis_size,
+           ket,
+           op,
+           tmp);
+    double val = cblas_ddot( basis_size,
+                             bra,
+                             1,
+                             tmp,
+                             1);
+    return val;
+  }
 }
