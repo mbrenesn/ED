@@ -3,9 +3,10 @@
 XXZ::XXZ(Basis &basis,
          bool periodic,
          bool sigma_z_mats,
-         bool local_kinetic)
+         bool local_kinetic,
+         bool current)
 : l_(basis.l), n_(basis.n), basis_size_(basis.basis_size), 
-periodic_(periodic), sigma_z_mats_(sigma_z_mats), local_kinetic_(local_kinetic)
+periodic_(periodic), sigma_z_mats_(sigma_z_mats), local_kinetic_(local_kinetic), current_(current)
 {
   HamMat.resize(basis_size_ * basis_size_);
   if(sigma_z_mats_){
@@ -15,6 +16,8 @@ periodic_(periodic), sigma_z_mats_(sigma_z_mats), local_kinetic_(local_kinetic)
   }
   if(local_kinetic_)
     LocalK_rowptr.push_back(0);
+  if(current_)
+    Curr_rowptr.push_back(0);
 }
 
 XXZ::~XXZ()
@@ -64,6 +67,10 @@ void XXZ::construct_xxz(MKL_INT *int_basis,
             LocalK_vals.push_back( 2.0 * alpha[site] );
             LocalK_cols.push_back( match_ind1 );
           }
+          if( current_ ){
+            Curr_vals.push_back( -2.0 * alpha[site] );
+            Curr_cols.push_back( match_ind1 );
+          }
           continue;
         }     
       } // End spin up case
@@ -78,6 +85,10 @@ void XXZ::construct_xxz(MKL_INT *int_basis,
             LocalK_vals.push_back( 2.0 * alpha[site] );
             LocalK_cols.push_back( match_ind2 );
           }
+          if( current_ ){
+            Curr_vals.push_back( 2.0 * alpha[site] );
+            Curr_cols.push_back( match_ind2 );
+          }
           continue;
         }
         else{
@@ -88,6 +99,7 @@ void XXZ::construct_xxz(MKL_INT *int_basis,
     } // End site loop
     HamMat[ (state * basis_size_) + state ] = vi + mag_term;
     if(local_kinetic_) LocalK_rowptr.push_back( LocalK_vals.size() );
+    if(current_) Curr_rowptr.push_back( Curr_vals.size() );
   } // End state loop
 }
 

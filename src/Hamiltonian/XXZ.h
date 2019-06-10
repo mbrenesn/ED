@@ -17,7 +17,8 @@ class XXZ
   XXZ(Basis &basis,
       bool periodic = false,
       bool sigma_z_mats = false,
-      bool local_kinetic = false);
+      bool local_kinetic = false,
+      bool current = false);
   ~XXZ();
   void construct_xxz(MKL_INT *int_basis,
                      std::vector<double> &alpha,
@@ -30,6 +31,9 @@ class XXZ
   std::vector<double> LocalK_vals;
   std::vector<MKL_INT> LocalK_cols;
   std::vector<MKL_INT> LocalK_rowptr;
+  std::vector<double> Curr_vals;
+  std::vector<MKL_INT> Curr_cols;
+  std::vector<MKL_INT> Curr_rowptr;
 
   private:
     MKL_INT l_; 
@@ -37,6 +41,7 @@ class XXZ
     bool periodic_;
     bool sigma_z_mats_;
     bool local_kinetic_;
+    bool current_;
     MKL_INT basis_size_;
 };
 
