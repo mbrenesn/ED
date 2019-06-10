@@ -74,6 +74,7 @@ int main(int argc, char **argv)
   std::cout << "# L = " << l << std::endl;
   std::cout << "# N = " << n << std::endl;
   std::cout << "# Periodic boundaries: " << periodic << std::endl;
+  std::cout << "# Periodic = 0 means open boundaries, periodic > 0 means periodic boundaries" << std::endl;
   std::cout << "# Alpha = " << "[";
   for(int i = 0; i < (l - 1); ++i){
     std::cout << alpha[i] << ", ";
@@ -98,7 +99,8 @@ int main(int argc, char **argv)
   XXZ heisen( *basis, 
               periodic, 
               true,
-              true );
+              false,
+              false );
   heisen.construct_xxz( basis->int_basis, 
                         alpha, 
                         delta, 
@@ -142,109 +144,57 @@ int main(int argc, char **argv)
                  basis_size);
 
   std::vector<double> tmp(basis_size, 0.0);
-  // Diagonal matrix for \sigma^z(N/2) * \sigma^z(N/2 - 1)
+  // Diagonal matrix for \sigma^z(N/2) * \sigma^z(N/2 + 1)
   std::vector<double> Sn2Sn21(basis_size, 0.0);
   vdMul(basis_size,
         &heisen.SigmaZ[(l / 2) - 1][0],
         &heisen.SigmaZ[(l / 2)][0],
         &Sn2Sn21[0]);
-
-  // Matrix for local kinetic energy, in sparse format
-  struct matrix_descr descrK;
-  sparse_matrix_t LocK;
-  mkl_sparse_d_create_csr( &LocK,
-                           SPARSE_INDEX_BASE_ZERO,
-                           basis_size,
-                           basis_size,
-                           &heisen.LocalK_rowptr[0],
-                           &heisen.LocalK_rowptr[0] + 1,
-                           &heisen.LocalK_cols[0],
-                           &heisen.LocalK_vals[0] );
-  descrK.type = SPARSE_MATRIX_TYPE_GENERAL;
-  mkl_sparse_optimize( LocK );
-#if 0
-  // Diagonals
-  tic = seconds(); 
+  // Diagonal matrix for \sigma^z(N/4) * \sigma^z(N/4 + 1)
+  std::vector<double> Sn4Sn41(basis_size, 0.0);
+  vdMul(basis_size,
+        &heisen.SigmaZ[(l / 4) - 1][0],
+        &heisen.SigmaZ[(l / 4)][0],
+        &Sn4Sn41[0]);
+  // Diagonal matrix for \sum_i \sigma^z(i) * \sigma^z(i + 1)
+  std::vector<double> nn_corr(basis_size, 0.0);
   for(MKL_INT i = 0; i < basis_size; ++i){
-    // Mig magnetisation
-    double val1 = Utils::expectation_value_dense_diag( &heisen.HamMat[(i * basis_size)],
-                                                       &heisen.HamMat[(i * basis_size)],
-                                                       &heisen.SigmaZ[(l / 2) - 1][0],
-                                                       &tmp[0],
-                                                       basis_size);
-    // Mig magnetisation + 1
-    double val2 = Utils::expectation_value_dense_diag( &heisen.HamMat[(i * basis_size)],
-                                                       &heisen.HamMat[(i * basis_size)],
-                                                       &heisen.SigmaZ[(l / 2)][0],
-                                                       &tmp[0],
-                                                       basis_size);
-    // Sigma^z_(N/2 - 1) * Sigma^z_(N/2)
-    double val3 = Utils::expectation_value_dense_diag( &heisen.HamMat[(i * basis_size)],
-                                                       &heisen.HamMat[(i * basis_size)],
-                                                       &Sn2Sn21[0],
-                                                       &tmp[0],
-                                                       basis_size);
-    // Local kinetic
-    mkl_sparse_d_mv( SPARSE_OPERATION_NON_TRANSPOSE,
-                     1.0,
-                     LocK,
-                     descrK,
-                     &heisen.HamMat[(i * basis_size)],
-                     0.0,
-                     &tmp[0] );
-    double val4 = cblas_ddot( basis_size,
-                              &heisen.HamMat[(i * basis_size)],
-                              1,
-                              &tmp[0],
-                              1);
-    std::cout << (eigvals[i] - eigvals[0]) / (eigvals[basis_size - 1] - eigvals[0]) 
-      << " " << val1 << " " << val2 << " " << val3 << " " << (val4 / 2.0) << std::endl;
+    double l_corr = 0.0;
+    for(MKL_INT sp = 0; sp < (l - 1); ++sp){
+      l_corr += heisen.SigmaZ[sp][i] * heisen.SigmaZ[sp + 1][i];
+    }
+    nn_corr[i] = l_corr / (l - 1);
   }
-  toc = seconds();
-  std::cout << "# Time mult: " << (toc - tic) << std::endl;
-#endif
 
   // Off diagonals
+  double window = 0.05;
+  
   std::cout << std::scientific;
   tic = seconds();
   for(MKL_INT i = 0; i < basis_size; ++i){
     for(MKL_INT j = 0; j < (i + 1); ++j){
       if( i == j ) continue;
-      if( ( (std::abs(eigvals[i] + eigvals[j])) / l ) <= 0.1 ){
-        // Mig magnetisation
+      if( ( (std::abs(eigvals[i] + eigvals[j])) / l ) <= window ){
+        // Sigma^z_(N/4) * Sigma^z_(N/4 + 1)
         double val1 = Utils::expectation_value_dense_diag( &heisen.HamMat[(i * basis_size)],
                                                            &heisen.HamMat[(j * basis_size)],
-                                                           &heisen.SigmaZ[(l / 2) - 1][0],
+                                                           &Sn4Sn41[0],
                                                            &tmp[0],
                                                            basis_size);
-        // Mig magnetisation -1
+        // Sigma^z_(N/2) * Sigma^z_(N/2 + 1)
         double val2 = Utils::expectation_value_dense_diag( &heisen.HamMat[(i * basis_size)],
-                                                           &heisen.HamMat[(j * basis_size)],
-                                                           &heisen.SigmaZ[(l / 2)][0],
-                                                           &tmp[0],
-                                                           basis_size);
-        // Sigma^z_(N/2 - 1) * Sigma^z_(N/2)
-        double val3 = Utils::expectation_value_dense_diag( &heisen.HamMat[(i * basis_size)],
                                                            &heisen.HamMat[(j * basis_size)],
                                                            &Sn2Sn21[0],
                                                            &tmp[0],
                                                            basis_size);
-        // Local kinetic
-        mkl_sparse_d_mv( SPARSE_OPERATION_NON_TRANSPOSE,
-                         1.0,
-                         LocK,
-                         descrK,
-                         &heisen.HamMat[(j * basis_size)],
-                         0.0,
-                         &tmp[0] );
-        double val4 = cblas_ddot( basis_size,
-                                  &heisen.HamMat[(i * basis_size)],
-                                  1,
-                                  &tmp[0],
-                                  1);
-        std::cout << i + 1 << " " << j + 1 << " " << eigvals[i] - eigvals[j]
-          << " " << std::abs(val1) << " " << std::abs(val2) << " " << std::abs(val3) << " " <<
-            std::abs(val4 / 2.0) << std::endl;
+        // \sum_i^{L-1} Sigma^z_(i) * Sigma^z_(i + 1)
+        double val3 = Utils::expectation_value_dense_diag( &heisen.HamMat[(i * basis_size)],
+                                                           &heisen.HamMat[(j * basis_size)],
+                                                           &nn_corr[0],
+                                                           &tmp[0],
+                                                           basis_size);
+        std::cout << eigvals[i] - eigvals[j] << " " << std::abs(val1) << " " 
+          << std::abs(val2) << " " << std::abs(val3) << std::endl;
       }
     }
   }
