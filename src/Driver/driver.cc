@@ -165,6 +165,19 @@ int main(int argc, char **argv)
     }
     nn_corr[i] = l_corr / (l - 1);
   }
+  // Total current operator
+  struct matrix_descr descrJ;
+  sparse_matrix_t TotJ;
+  mkl_sparse_d_create_csr( &TotJ,
+                           SPARSE_INDEX_BASE_ZERO,
+                           basis_size,
+                           basis_size,
+                           &heisen.Curr_rowptr[0],
+                           &heisen.Curr_rowptr[0] + 1,
+                           &heisen.Curr_cols[0],
+                           &heisen.Curr_vals[0] );
+  descrJ.type = SPARSE_MATRIX_TYPE_GENERAL;
+  mkl_sparse_optimize( TotJ );
 
   // Off diagonals
   double window = 0.05;
@@ -193,13 +206,28 @@ int main(int argc, char **argv)
                                                            &nn_corr[0],
                                                            &tmp[0],
                                                            basis_size);
+        // Current
+        mkl_sparse_d_mv( SPARSE_OPERATION_NON_TRANSPOSE,
+                         1.0,
+                         TotJ,
+                         descrJ,
+                         &heisen.HamMat[(j * basis_size)],
+                         0.0,
+                         &tmp[0] );
+        double val4 = cblas_ddot( basis_size,
+                                  &heisen.HamMat[(i * basis_size)],
+                                  1,
+                                  &tmp[0],
+                                  1 );
         std::cout << eigvals[i] - eigvals[j] << " " << std::abs(val1) << " " 
-          << std::abs(val2) << " " << std::abs(val3) << std::endl;
+          << std::abs(val2) << " " << std::abs(val3) << " " << std::abs(val4) << std::endl;
       }
     }
   }
   toc = seconds();
   std::cout << "# Time mult: " << (toc - tic) << std::endl;
+
+  mkl_sparse_destroy( TotJ );
 
   return 0;
 }
