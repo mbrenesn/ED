@@ -1,14 +1,28 @@
-// Impurity calculations ETH
+// Intended to be used for calculations on the ETH and Fischer information project
+// Computes susceptibility at a given temperature from canonical state,
+// the idea is to compare that with the one obtained from f0(E,w) i.e. offdiagonals ETH
 
 #include <iostream>
+#include <numeric>
+#include <algorithm>
 #include <sys/time.h>
 
 #include "mkl.h"
+#include "mkl_cblas.h"
 #include "mkl_lapacke.h"
-#include "mkl_spblas.h"
 
 #include "../Basis/Basis.h"
 #include "../Hamiltonian/XXZ.h"
+
+std::vector<double> linspace(double a, double b, size_t n) {
+  double h = (b - a) / static_cast<double>(n - 1);
+  std::vector<double> vec(n);
+  typename std::vector<double>::iterator x;
+  double val;
+  for (x = vec.begin(), val = a; x != vec.end(); ++x, val += h)
+    *x = val;
+  return vec;
+}
 
 double seconds()
 {
@@ -25,14 +39,14 @@ int main(int argc, char **argv)
   MKL_INT n = 777;
   double alpha_val = 0.777;
   double delta_val = 0.777;
-  double h_val = 0.777;
+  double T = 0.777;
   double eps = 0.777;
   double stag = 0.777;
   bool periodic = true;
 
-  if(argc != 17){
+  if(argc != 15){
     std::cerr << "Usage: " << argv[0] << 
-      " --l [sites] --n [fill] --alpha [alpha] --delta [delta] --h [h] --eps [eps] --stag [stag] --periodic [bool]" 
+      " --l [sites] --n [fill] --alpha [alpha] --delta [delta] --eps [eps] --stag [stag] --periodic [bool]" 
         << std::endl;
     exit(1);
   }
@@ -43,17 +57,16 @@ int main(int argc, char **argv)
     else if(str == "--n") n = atoi(argv[i + 1]);
     else if(str == "--alpha") alpha_val = atof(argv[i + 1]);
     else if(str == "--delta") delta_val = atof(argv[i + 1]);
-    else if(str == "--h") h_val = atof(argv[i + 1]);
     else if(str == "--eps") eps = atof(argv[i + 1]);
     else if(str == "--stag") stag = atof(argv[i + 1]);
     else if(str == "--periodic") periodic = atoi(argv[i + 1]);
     else continue;
   }
 
-  if(l == 777 || n == 777 || alpha_val == 0.777 || delta_val == 0.777 || h_val == 0.777 || eps == 0.777 || stag == 0.777){
+  if(l == 777 || n == 777 || alpha_val == 0.777 || delta_val == 0.777 || eps == 0.777 || stag == 0.777){
     std::cerr << "Error setting parameters" << std::endl;
     std::cerr << "Usage: " << argv[0] << 
-      " --l [sites] --n [fill] --alpha [alpha] --delta [delta] --h [h] --eps [eps] --stag [stag] --periodic [bool]" 
+      " --l [sites] --n [fill] --alpha [alpha] --delta [delta] --eps [eps] --stag [stag] --periodic [bool]" 
         << std::endl;
     exit(1);
   }
@@ -63,8 +76,6 @@ int main(int argc, char **argv)
   std::vector<double> h(l, 0.0);
   // Small perturbation to rid ourselves of symmetries
   h[0] += eps;
-  // Impurity model
-  h[(l / 2) - 1] += h_val;
   // Staggered field
   for(MKL_INT i = 1; i < l; i += 2) h[i] += -1.0 * stag;
 
@@ -132,102 +143,6 @@ int main(int argc, char **argv)
   double toc = seconds();
   std::cout << "# Time eigen: " << (toc - tic) << std::endl;
 
-  // Compute expectation values
-  // Transpose eigvectors
-  mkl_dimatcopy( 'R',
-                 'T',
-                 basis_size,
-                 basis_size,
-                 1,
-                 &heisen.HamMat[0],
-                 basis_size,
-                 basis_size);
-
-  std::vector<double> tmp(basis_size, 0.0);
-  // Diagonal matrix for \sigma^z(N/2) * \sigma^z(N/2 + 1)
-  std::vector<double> Sn2Sn21(basis_size, 0.0);
-  vdMul(basis_size,
-        &heisen.SigmaZ[(l / 2) - 1][0],
-        &heisen.SigmaZ[(l / 2)][0],
-        &Sn2Sn21[0]);
-  // Diagonal matrix for \sigma^z(N/4) * \sigma^z(N/4 + 1)
-  std::vector<double> Sn4Sn41(basis_size, 0.0);
-  vdMul(basis_size,
-        &heisen.SigmaZ[(l / 4) - 1][0],
-        &heisen.SigmaZ[(l / 4)][0],
-        &Sn4Sn41[0]);
-  // Diagonal matrix for \sum_i \sigma^z(i) * \sigma^z(i + 1)
-  std::vector<double> nn_corr(basis_size, 0.0);
-  for(MKL_INT i = 0; i < basis_size; ++i){
-    double l_corr = 0.0;
-    for(MKL_INT sp = 0; sp < (l - 1); ++sp){
-      l_corr += heisen.SigmaZ[sp][i] * heisen.SigmaZ[sp + 1][i];
-    }
-    nn_corr[i] = l_corr / (l - 1);
-  }
-  // Total current operator
-  struct matrix_descr descrJ;
-  sparse_matrix_t TotJ;
-  mkl_sparse_d_create_csr( &TotJ,
-                           SPARSE_INDEX_BASE_ZERO,
-                           basis_size,
-                           basis_size,
-                           &heisen.Curr_rowptr[0],
-                           &heisen.Curr_rowptr[0] + 1,
-                           &heisen.Curr_cols[0],
-                           &heisen.Curr_vals[0] );
-  descrJ.type = SPARSE_MATRIX_TYPE_GENERAL;
-  mkl_sparse_optimize( TotJ );
-
-  // Off diagonals
-  double window = 0.05;
-  
-  std::cout << std::scientific;
-  tic = seconds();
-  for(MKL_INT i = 0; i < basis_size; ++i){
-    for(MKL_INT j = 0; j < (i + 1); ++j){
-      if( i == j ) continue;
-      if( ( (std::abs(eigvals[i] + eigvals[j])) / l ) <= window ){
-        // Sigma^z_(N/4) * Sigma^z_(N/4 + 1)
-        double val1 = Utils::expectation_value_dense_diag( &heisen.HamMat[(i * basis_size)],
-                                                           &heisen.HamMat[(j * basis_size)],
-                                                           &Sn4Sn41[0],
-                                                           &tmp[0],
-                                                           basis_size);
-        // Sigma^z_(N/2) * Sigma^z_(N/2 + 1)
-        double val2 = Utils::expectation_value_dense_diag( &heisen.HamMat[(i * basis_size)],
-                                                           &heisen.HamMat[(j * basis_size)],
-                                                           &Sn2Sn21[0],
-                                                           &tmp[0],
-                                                           basis_size);
-        // \sum_i^{L-1} Sigma^z_(i) * Sigma^z_(i + 1)
-        double val3 = Utils::expectation_value_dense_diag( &heisen.HamMat[(i * basis_size)],
-                                                           &heisen.HamMat[(j * basis_size)],
-                                                           &nn_corr[0],
-                                                           &tmp[0],
-                                                           basis_size);
-        // Current
-        mkl_sparse_d_mv( SPARSE_OPERATION_NON_TRANSPOSE,
-                         1.0,
-                         TotJ,
-                         descrJ,
-                         &heisen.HamMat[(j * basis_size)],
-                         0.0,
-                         &tmp[0] );
-        double val4 = cblas_ddot( basis_size,
-                                  &heisen.HamMat[(i * basis_size)],
-                                  1,
-                                  &tmp[0],
-                                  1 );
-        std::cout << eigvals[i] - eigvals[j] << " " << std::abs(val1) << " " 
-          << std::abs(val2) << " " << std::abs(val3) << " " << std::abs(val4) << std::endl;
-      }
-    }
-  }
-  toc = seconds();
-  std::cout << "# Time mult: " << (toc - tic) << std::endl;
-
-  mkl_sparse_destroy( TotJ );
 
   return 0;
 }
