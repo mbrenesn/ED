@@ -190,7 +190,7 @@ int main(int argc, char **argv)
   std::cout << "# Computating expectaction values..." << std::endl;
   tic = seconds();
   std::vector<double> temp_f = linspace(0.1, 30.0, 100);
-  //std::vector<double> temp_f(1, 100.0);
+  //std::vector<double> temp_f(1, 10.0);
   std::cout << "# [T] [Canonical_value (trace)] [ETH value (single eigenstate)] [Num elems]" << std::endl;
   std::vector<double> probs(basis_size, 0.0);
   for( MKL_INT tt = 0; tt < temp_f.size(); ++tt){
@@ -220,7 +220,7 @@ int main(int argc, char **argv)
                                1);
  
     // Find the index of the eigenvalue closest to \bar{E}
-    double energy_window = 0.1 * ( eigvals[basis_size - 1] - eigvals[0]);
+    double energy_window = 0.1 * ( eigvals[basis_size - 1] - eigvals[0] );
     double diff = 10000.0;
     double eig_bar;
     MKL_INT index;
@@ -242,13 +242,6 @@ int main(int argc, char **argv)
       if( eigvals[ind] > upper ) break;
     }
      
-    //std::vector<double> elems;
-    //MKL_INT window = 50;
-    //for(MKL_INT i = index - (window / 2); i < index + (window / 2); ++i){
-    //  if(i < 0) continue;
-    //  elems.push_back( sigma_z[(i * basis_size) + i] );
-    //}
-
     double average = std::accumulate( elems.begin(), elems.end(), 0.0) / elems.size(); 
     double sqsum = std::inner_product(elems.begin(), elems.end(), elems.begin(), 0.0);
     double stdev = std::sqrt( (sqsum / (elems.size())) - (average * average) );
